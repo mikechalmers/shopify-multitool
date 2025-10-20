@@ -46,7 +46,7 @@ function _getCartInPage() {
       headers: { 'Accept': 'application/json' },
       credentials: 'same-origin'
     });
-    if (!res.ok) throw new Error('Cannot access /cart.js. This may not be a classic Shopify AJAX cart.');
+    if (!res.ok) throw new Error('Unable to access cart. Please ensure you\'re on a Shopify storefront with AJAX Cart API enabled.');
     return await res.json();
   })();
 }
@@ -62,11 +62,11 @@ function _logCartInPage() {
       headers: { 'Accept': 'application/json' },
       credentials: 'same-origin'
     });
-    if (!res.ok) throw new Error('Cannot access /cart.js. This may not be a classic Shopify AJAX cart.');
+    if (!res.ok) throw new Error('Unable to access cart. Please ensure you\'re on a Shopify storefront with AJAX Cart API enabled.');
     const cart = await res.json();
 
     // Log with nice formatting to the page console
-    console.group('%c🛒 Shopify Cart Tools', 'font-size: 14px; font-weight: bold; color: #5C6AC4;');
+    console.group('%c🛒 Cart Tools for Shopify', 'font-size: 14px; font-weight: bold; color: #5C6AC4;');
     console.log('Cart data:', cart);
     console.log(`Items: ${cart.items?.length ?? 0} | Total: ${cart.currency || 'USD'} ${cart.total_price ? (cart.total_price / 100).toFixed(2) : '0.00'}`);
     if (cart.items && cart.items.length > 0) {
@@ -95,7 +95,7 @@ function _clearCartInPage() {
       headers: { 'Accept': 'application/json' },
       credentials: 'same-origin'
     });
-    if (!res.ok) throw new Error('POST /cart/clear.js failed.');
+    if (!res.ok) throw new Error('Failed to clear cart. Please try again or reload the page.');
     return await res.json();
   })();
 }
@@ -116,7 +116,7 @@ function _logInitInPage() {
 
     // Fancy startup log
     console.log(
-      '%c🛒 Shopify Cart Tools %cActive',
+      '%c🛒 Cart Tools for Shopify %cActive',
       'font-size: 16px; font-weight: bold; color: #5C6AC4; background: #F4F5FA; padding: 8px 12px; border-radius: 4px;',
       'font-size: 12px; color: #4CAF50; font-weight: bold; margin-left: 8px;'
     );
@@ -216,7 +216,7 @@ function enableButtons() {
     updateSummary(cart);
   } catch {
     // Silently fail - not a Shopify site or cart unavailable
-    summaryEl.textContent = 'Not on a Shopify cart page';
+    summaryEl.textContent = 'Visit a Shopify store to use this extension';
     summaryEl.className = 'summary muted';
   }
 })();
