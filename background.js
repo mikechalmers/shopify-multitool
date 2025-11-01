@@ -1,5 +1,6 @@
+
 /**
- * Background service worker for Shopify Cart Tools
+ * Background service worker for Cart Tools for Shopify
  * Updates the extension badge with cart item count when on Shopify sites
  */
 

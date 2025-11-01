@@ -58,31 +58,46 @@ This checklist covers all requirements for submitting "Cart Tools for Shopify" t
 #### Item Details
 - [ ] **Detailed Description** (minimum 3-5 paragraphs):
   ```
-  Cart Tools for Shopify is a lightweight developer extension that provides
-  essential debugging and inspection tools for Shopify storefronts using the
-  AJAX Cart API.
+  Cart Tools for Shopify is a powerful yet lightweight developer extension that provides
+  essential debugging and inspection tools for Shopify storefronts. Access cart and
+  product data instantly with an intuitive interface that adapts to your workflow.
 
-  FEATURES:
+  CART TOOLS:
   • View cart summary (item count and total) at a glance
-  • Log formatted cart data to browser console
-  • Copy complete cart JSON to clipboard
-  • Empty cart with one click
+  • Log beautifully formatted cart data to browser console with item tables
+  • Copy complete cart JSON to clipboard for testing
+  • Empty cart with one click (with confirmation)
   • Real-time cart item badge on extension icon
 
+  PRODUCT TOOLS:
+  • Automatically detect when you're on a product page
+  • Log detailed product data including all variants to console
+  • Copy complete product JSON with pricing and inventory data
+  • View variant information in formatted console tables
+
+  SMART FEATURES:
+  • Context-aware UI - automatically shows/hides relevant tools
+  • Dark mode support that matches your system preferences
+  • Timeout protection for slow-loading pages
+  • Clear, actionable error messages
+  • Works directly in the page context for reliable API access
+
   PERFECT FOR:
-  • Shopify theme developers debugging cart functionality
-  • Frontend developers testing cart integrations
-  • QA engineers verifying cart behavior
-  • Anyone needing quick cart inspection tools
+  • Shopify theme developers debugging cart and product functionality
+  • Frontend developers testing cart and checkout integrations
+  • QA engineers verifying product and cart behavior
+  • Developers building custom cart experiences
+  • Anyone needing quick access to Shopify AJAX API data
 
   COMPATIBILITY:
   Works with classic Shopify themes and any storefront using Shopify's
-  AJAX Cart API (/cart.js endpoint). Does not work with headless
-  implementations without the standard cart endpoints.
+  AJAX Cart API (/cart.js, /products/*.js endpoints). Does not work with
+  headless implementations without the standard API endpoints.
 
-  PRIVACY:
+  PRIVACY & SECURITY:
   This extension does not collect, store, or transmit any data. All
-  operations occur locally in your browser. See our privacy policy for details.
+  operations occur locally in your browser. No external servers, no tracking,
+  no telemetry. Your data stays private. See our privacy policy for full details.
   ```
 
 - [ ] **Category**: Select "Developer Tools"

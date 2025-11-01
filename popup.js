@@ -1,5 +1,5 @@
 /**
- * Shopify Cart Tools - Popup Script
+ * Cart Tools for Shopify - Popup Script
  * Main logic for the extension popup UI
  */
 
@@ -8,6 +8,8 @@ const summaryEl = document.getElementById('summary');
 const logBtn = document.getElementById('log');
 const copyBtn = document.getElementById('copy');
 const clearBtn = document.getElementById('clear');
+const logProductBtn = document.getElementById('log-product');
+const copyProductBtn = document.getElementById('copy-product');
 
 const API_TIMEOUT = 10000; // 10 seconds
 
@@ -97,6 +99,115 @@ function _clearCartInPage() {
     });
     if (!res.ok) throw new Error('Failed to clear cart. Please try again or reload the page.');
     return await res.json();
+  })();
+}
+
+/**
+ * Gets product data from the current product page
+ * Injected into page context
+ * @returns {Promise<Object>} Product JSON data
+ */
+function _getProductInPage() {
+  return (async () => {
+    // Try to extract product handle from URL or meta tags
+    const pathMatch = window.location.pathname.match(/\/products\/([^/?]+)/);
+    const handle = pathMatch?.[1];
+
+    if (!handle) {
+      throw new Error('Not on a product page. Visit a product page to use product tools.');
+    }
+
+    const res = await fetch(`/products/${handle}.js`, {
+      headers: { 'Accept': 'application/json' },
+      credentials: 'same-origin'
+    });
+
+    if (!res.ok) throw new Error('Unable to access product data. Please ensure you\'re on a Shopify product page.');
+    return await res.json();
+  })();
+}
+
+/**
+ * Logs product data to the page console
+ * Injected into page context
+ * @returns {Promise<Object>} Product JSON data
+ */
+function _logProductInPage() {
+  return (async () => {
+    const pathMatch = window.location.pathname.match(/\/products\/([^/?]+)/);
+    const handle = pathMatch?.[1];
+
+    if (!handle) {
+      throw new Error('Not on a product page. Visit a product page to use product tools.');
+    }
+
+    const res = await fetch(`/products/${handle}.js`, {
+      headers: { 'Accept': 'application/json' },
+      credentials: 'same-origin'
+    });
+
+    if (!res.ok) throw new Error('Unable to access product data. Please ensure you\'re on a Shopify product page.');
+    const product = await res.json();
+
+    // Log with nice formatting to the page console
+    console.group('%c📦 Cart Tools for Shopify', 'font-size: 14px; font-weight: bold; color: #5C6AC4;');
+    console.log('Product data:', product);
+    console.log(`Title: ${product.title || 'Unknown'}`);
+    console.log(`Type: ${product.type || '-'} | Vendor: ${product.vendor || '-'}`);
+    console.log(`Variants: ${product.variants?.length ?? 0} | Available: ${product.available ? 'Yes' : 'No'}`);
+    if (product.variants && product.variants.length > 0) {
+      console.table(product.variants.map(v => ({
+        title: v.title || '-',
+        sku: v.sku || '-',
+        price: `${v.price ? (v.price / 100).toFixed(2) : '0.00'}`,
+        available: v.available ? 'Yes' : 'No',
+        inventory_quantity: v.inventory_quantity ?? '-'
+      })));
+    }
+    console.groupEnd();
+
+    return product;
+  })();
+}
+
+/**
+ * Detects the current page type and available features
+ * Injected into page context
+ * @returns {Promise<Object>} Page context info
+ */
+function _detectPageContext() {
+  return (async () => {
+    const context = {
+      isShopify: false,
+      hasCart: false,
+      isProductPage: false,
+      productHandle: null,
+      cart: null
+    };
+
+    // Check if cart API is available
+    try {
+      const cartRes = await fetch('/cart.js', {
+        headers: { 'Accept': 'application/json' },
+        credentials: 'same-origin'
+      });
+      if (cartRes.ok) {
+        context.isShopify = true;
+        context.hasCart = true;
+        context.cart = await cartRes.json();
+      }
+    } catch (e) {
+      // Not a Shopify site or cart unavailable
+    }
+
+    // Check if on a product page
+    const pathMatch = window.location.pathname.match(/\/products\/([^/?]+)/);
+    if (pathMatch) {
+      context.isProductPage = true;
+      context.productHandle = pathMatch[1];
+    }
+
+    return context;
   })();
 }
 
@@ -198,6 +309,8 @@ function disableButtons() {
   logBtn.disabled = true;
   copyBtn.disabled = true;
   clearBtn.disabled = true;
+  logProductBtn.disabled = true;
+  copyProductBtn.disabled = true;
 }
 
 /**
@@ -207,15 +320,60 @@ function enableButtons() {
   logBtn.disabled = false;
   copyBtn.disabled = false;
   clearBtn.disabled = false;
+  logProductBtn.disabled = false;
+  copyProductBtn.disabled = false;
 }
 
-// Initialize: Try to load and display cart summary with cool console log
+/**
+ * Updates UI based on page context
+ * @param {Object} context - Page context from _detectPageContext
+ */
+function updateUIForContext(context) {
+  const cartSection = document.querySelector('.section:has(#log)');
+  const productSection = document.querySelector('.section:has(#log-product)');
+
+  if (!context.isShopify) {
+    // Not a Shopify site
+    summaryEl.textContent = 'Visit a Shopify store to use this extension';
+    summaryEl.className = 'summary muted';
+    if (cartSection) cartSection.style.display = 'none';
+    if (productSection) productSection.style.display = 'none';
+    return;
+  }
+
+  // Show/hide cart section based on cart availability
+  if (cartSection) {
+    cartSection.style.display = context.hasCart ? 'block' : 'none';
+  }
+
+  // Show/hide product section based on whether we're on a product page
+  if (productSection) {
+    productSection.style.display = context.isProductPage ? 'block' : 'none';
+  }
+
+  // Update summary with cart data if available
+  if (context.hasCart && context.cart) {
+    updateSummary(context.cart);
+  } else {
+    summaryEl.textContent = context.isProductPage ? 'Product page' : 'Shopify store';
+    summaryEl.className = 'summary muted';
+  }
+}
+
+// Initialize: Detect page context and update UI accordingly
 (async () => {
   try {
-    const cart = await withTimeout(runInPage(_logInitInPage), API_TIMEOUT);
-    updateSummary(cart);
+    const context = await withTimeout(runInPage(_detectPageContext), API_TIMEOUT);
+    updateUIForContext(context);
+
+    // Log to console if on Shopify site
+    if (context.isShopify && context.hasCart) {
+      runInPage(_logInitInPage).catch(() => {
+        // Ignore errors in console logging
+      });
+    }
   } catch {
-    // Silently fail - not a Shopify site or cart unavailable
+    // Silently fail - not a Shopify site or unavailable
     summaryEl.textContent = 'Visit a Shopify store to use this extension';
     summaryEl.className = 'summary muted';
   }
@@ -284,6 +442,45 @@ clearBtn.addEventListener('click', async () => {
     }
   } catch (err) {
     setStatus(`Error: ${err.message || err}`, 'error');
+    enableButtons();
+  }
+});
+
+// Log product to console
+logProductBtn.addEventListener('click', async () => {
+  setStatus('Reading product…');
+  disableButtons();
+
+  try {
+    const product = await withTimeout(runInPage(_logProductInPage), API_TIMEOUT);
+    setStatus(`Logged to console: ${product.title || 'Product'}`, 'success');
+  } catch (err) {
+    setStatus(`Error: ${err.message || err}`, 'error');
+  } finally {
+    enableButtons();
+  }
+});
+
+// Copy product JSON to clipboard
+copyProductBtn.addEventListener('click', async () => {
+  setStatus('Copying product…');
+  disableButtons();
+
+  try {
+    const product = await withTimeout(runInPage(_getProductInPage), API_TIMEOUT);
+    await navigator.clipboard.writeText(JSON.stringify(product, null, 2));
+
+    // Visual feedback: checkmark
+    const originalText = copyProductBtn.textContent;
+    copyProductBtn.textContent = '✓ Copied!';
+    setStatus('Product JSON copied to clipboard.', 'success');
+
+    setTimeout(() => {
+      copyProductBtn.textContent = originalText;
+    }, 2000);
+  } catch (err) {
+    setStatus(`Error: ${err.message || err}`, 'error');
+  } finally {
     enableButtons();
   }
 });

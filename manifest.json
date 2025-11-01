@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Cart Tools for Shopify",
-  "version": "1.0.0",
-  "description": "Dev tools for Shopify storefronts: log/copy cart JSON and empty cart via the AJAX API.",
+  "version": "1.1.0",
+  "description": "Developer tools for Shopify storefronts: inspect cart and product data, copy JSON, and manage cart via AJAX API.",
   "author": "Michael Chalmers",
   "action": {
     "default_title": "Cart Tools for Shopify",
