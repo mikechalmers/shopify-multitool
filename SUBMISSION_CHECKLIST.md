@@ -65,34 +65,41 @@ This checklist covers all requirements for submitting "Cart Tools for Shopify" t
   CART TOOLS:
   • View cart summary (item count and total) at a glance
   • Log beautifully formatted cart data to browser console with item tables
-  • Copy complete cart JSON to clipboard for testing
+  • Copy complete cart JSON to clipboard with inline copy button
+  • Remove all cart attributes with one click (perfect for testing)
   • Empty cart with one click (with confirmation)
   • Real-time cart item badge on extension icon
 
-  PRODUCT TOOLS:
+  PRODUCT TOOLS (shown only on product pages):
   • Automatically detect when you're on a product page
   • Log detailed product data including all variants to console
-  • Copy complete product JSON with pricing and inventory data
+  • Copy complete product JSON with inline copy button
   • View variant information in formatted console tables
+  • Works with standard, localized, and collection product URLs
 
   SMART FEATURES:
-  • Context-aware UI - automatically shows/hides relevant tools
+  • Context-aware UI - automatically shows/hides relevant tools based on page type
+  • Per-button loading indicators for clear visual feedback
+  • Comprehensive error messages with specific troubleshooting context
+  • Support for localized URLs (e.g., /en/products/handle)
   • Dark mode support that matches your system preferences
-  • Timeout protection for slow-loading pages
-  • Clear, actionable error messages
+  • Timeout protection for slow-loading pages with detailed error context
+  • Screen reader accessible with ARIA live regions
   • Works directly in the page context for reliable API access
 
   PERFECT FOR:
   • Shopify theme developers debugging cart and product functionality
   • Frontend developers testing cart and checkout integrations
+  • Developers working with cart attributes and custom properties
   • QA engineers verifying product and cart behavior
   • Developers building custom cart experiences
   • Anyone needing quick access to Shopify AJAX API data
 
   COMPATIBILITY:
   Works with classic Shopify themes and any storefront using Shopify's
-  AJAX Cart API (/cart.js, /products/*.js endpoints). Does not work with
-  headless implementations without the standard API endpoints.
+  AJAX Cart API (/cart.js, /cart/update.js, /products/*.js endpoints).
+  Supports standard, localized, and collection product URLs. Does not work
+  with headless implementations without the standard API endpoints.
 
   PRIVACY & SECURITY:
   This extension does not collect, store, or transmit any data. All
@@ -152,11 +159,41 @@ This checklist covers all requirements for submitting "Cart Tools for Shopify" t
 - [ ] Create ZIP file of extension:
   ```bash
   cd /Users/michaelchalmers/shopify-multitool
-  # Remove any unnecessary files first
-  rm -rf .git .DS_Store
-  # Create zip
-  zip -r cart-tools-for-shopify-v1.0.0.zip . -x "*.git*" "*.DS_Store" "node_modules/*"
+
+  # Create zip with only required files for Chrome Web Store
+  zip -r cart-tools-for-shopify-v1.2.0.zip \
+    manifest.json \
+    popup.html \
+    popup.js \
+    background.js \
+    icons/ \
+    PRIVACY.md \
+    -x "*.DS_Store" "*.git*"
+
+  # Alternative: Exclude unnecessary files from current directory
+  # zip -r cart-tools-for-shopify-v1.2.0.zip . \
+  #   -x "*.git*" "*.DS_Store" "node_modules/*" "*.md" "!PRIVACY.md" \
+  #   "TODO.md" "CHANGELOG.md" "CLAUDE.md" "SUBMISSION_CHECKLIST.md" "README.md"
   ```
+
+  **Files required for Chrome Web Store:**
+  - ✅ `manifest.json` - Extension metadata
+  - ✅ `popup.html` - UI
+  - ✅ `popup.js` - Logic
+  - ✅ `background.js` - Service worker
+  - ✅ `icons/` - All icon sizes (16, 32, 48, 128)
+  - ✅ `PRIVACY.md` - Privacy policy (if not hosted elsewhere)
+
+  **Files to exclude:**
+  - ❌ `.git/` - Git repository
+  - ❌ `.DS_Store` - macOS metadata
+  - ❌ `README.md` - Development docs (not needed in extension)
+  - ❌ `CLAUDE.md` - Development docs
+  - ❌ `CHANGELOG.md` - Development docs
+  - ❌ `TODO.md` - Development docs
+  - ❌ `SUBMISSION_CHECKLIST.md` - This file
+  - ❌ `node_modules/` - Dependencies (if any)
+  - ❌ `.gitignore` - Git config
 
 ### 5. Publishing Steps
 

@@ -1,13 +1,27 @@
 # Shopify Cart Tools
 
-A Chrome extension that provides developer tools for inspecting and managing Shopify cart data on storefronts.
+A Chrome extension that provides developer tools for inspecting and managing Shopify cart and product data on storefronts.
 
 ## Features
 
+### Cart Tools
 - **View Cart Summary** - See item count and total price at a glance
-- **Log Cart to Console** - Output formatted cart data to your browser's developer console
+- **Log Cart to Console** - Output formatted cart data to your browser's developer console with item table
 - **Copy Cart JSON** - Copy the complete cart object to your clipboard for analysis
+- **Remove Attributes** - Clear all cart-level attributes with one click
 - **Empty Cart** - Clear all items from the cart with one click
+
+### Product Tools (on product pages)
+- **Log Product to Console** - Output formatted product data with variant table
+- **Copy Product JSON** - Copy complete product data to clipboard for analysis
+
+### Smart Features
+- Automatically detects page context and shows relevant tools
+- Supports localized URLs (e.g., `/en/products/handle`)
+- Supports collection URLs (e.g., `/collections/summer/products/handle`)
+- Per-button loading indicators for visual feedback
+- Comprehensive error messages with specific troubleshooting context
+- Screen reader accessible with ARIA live regions
 
 ## Installation
 
@@ -26,26 +40,40 @@ A Chrome extension that provides developer tools for inspecting and managing Sho
 
 1. **Navigate to any Shopify storefront** (e.g., `*.myshopify.com` or any site running Shopify)
 2. **Click the extension icon** in your Chrome toolbar
-3. The popup will show:
-   - Current cart summary (item count and total)
-   - Three action buttons
+3. The popup will automatically detect the page type and show relevant tools
 
-### Actions
+### Cart Tools (shown on all Shopify pages)
 
-**Log cart to console**
+**Log to console**
 - Outputs beautifully formatted cart data to the page's console (not the popup console)
 - Open Developer Tools (F12 or Cmd+Option+I) on the storefront page to see the output
 - Includes a table view of cart items with titles, variants, quantities, and prices
 
-**Copy cart JSON**
+**Copy (inline button)**
 - Copies the complete cart object as formatted JSON to your clipboard
 - Perfect for debugging, testing, or data analysis
-- Button shows "✓ Copied!" confirmation for 2 seconds
+- Button shows "✓" confirmation for 2 seconds
+
+**Remove attributes**
+- Removes all cart-level attributes (custom properties set on the cart)
+- Useful for testing or clearing test data
+- Shows a confirmation dialog before proceeding
+- Automatically reloads the page after removal
 
 **Empty cart**
 - Clears all items from the cart
 - Shows a confirmation dialog before proceeding
 - Automatically reloads the page to reflect changes
+
+### Product Tools (shown only on product pages)
+
+**Log to console**
+- Outputs formatted product data to the page's console
+- Includes a table view of variants with SKU, price, and availability
+
+**Copy (inline button)**
+- Copies complete product JSON to clipboard
+- Includes all variants, images, options, and metadata
 
 ## Compatibility
 
@@ -74,20 +102,40 @@ See [PRIVACY.md](PRIVACY.md) for full details.
 
 ## Troubleshooting
 
-**"Not on a Shopify cart page" message**
-- The extension can't detect a Shopify cart on the current page
-- Make sure you're on a Shopify storefront (not the admin panel)
+**"Visit a Shopify store to use this extension"**
+- The extension can't detect a Shopify storefront on the current page
+- Make sure you're on a Shopify storefront (not the admin panel, checkout, or browser pages)
 - Some custom implementations may not expose the standard cart API
 
-**"Cannot access /cart.js" error**
+**"Cannot access this page" or "Extensions cannot run on browser pages"**
+- Chrome extensions are restricted on browser pages (chrome://, chrome-extension://, etc.)
+- Navigate to an actual website to use the extension
+
+**"Failed to access cart (HTTP 404/500)"**
 - The store may be using a custom cart implementation
+- HTTP status code indicates the specific error (404 = not found, 500 = server error)
 - Try refreshing the page and clicking the extension icon again
 - If the error persists, the store may not support the AJAX Cart API
 
-**Cart actions don't work**
-- Ensure you're on the actual storefront page (not a preview or iframe)
-- Check that JavaScript is enabled in your browser
-- Try reloading the extension: go to `chrome://extensions/`, find Shopify Cart Tools, and click the reload icon
+**"Expected JSON response but got text/html"**
+- The server returned an error page instead of JSON data
+- This usually means the store is in maintenance mode or the API is unavailable
+- Check if the storefront loads correctly in your browser
+
+**"Operation timed out after 10s"**
+- The operation took too long to complete
+- Check your internet connection
+- The error message will specify which operation timed out (e.g., "Reading cart timed out")
+- Try again after a moment
+
+**"Failed to copy to clipboard"**
+- Browser may be blocking clipboard access
+- Make sure you've granted clipboard permissions
+- Try clicking the extension icon again and retrying
+
+**"No attributes found on cart"**
+- The cart doesn't have any custom attributes to remove
+- This is expected if you haven't set custom cart attributes
 
 ## Permissions
 

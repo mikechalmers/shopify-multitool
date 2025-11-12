@@ -8,10 +8,15 @@ const summaryEl = document.getElementById('summary');
 const logBtn = document.getElementById('log');
 const copyBtn = document.getElementById('copy');
 const clearBtn = document.getElementById('clear');
+const removeAttrsBtn = document.getElementById('remove-attrs');
 const logProductBtn = document.getElementById('log-product');
 const copyProductBtn = document.getElementById('copy-product');
 
 const API_TIMEOUT = 10000; // 10 seconds
+
+// Track copy button timeouts for cancellation
+let copyCartTimeout = null;
+let copyProductTimeout = null;
 
 /**
  * Gets the active tab ID
@@ -23,16 +28,17 @@ async function getActiveTabId() {
 }
 
 /**
- * Adds a timeout to a promise
+ * Adds a timeout to a promise with context
  * @param {Promise} promise - The promise to wrap
  * @param {number} ms - Timeout in milliseconds
+ * @param {string} operation - Description of the operation for error message
  * @returns {Promise} The promise with timeout
  */
-function withTimeout(promise, ms) {
+function withTimeout(promise, ms, operation = 'Operation') {
   return Promise.race([
     promise,
     new Promise((_, reject) =>
-      setTimeout(() => reject(new Error(`Operation timed out after ${ms}ms`)), ms)
+      setTimeout(() => reject(new Error(`${operation} timed out after ${ms / 1000}s. Please check your connection and try again.`)), ms)
     )
   ]);
 }
@@ -48,8 +54,17 @@ function _getCartInPage() {
       headers: { 'Accept': 'application/json' },
       credentials: 'same-origin'
     });
-    if (!res.ok) throw new Error('Unable to access cart. Please ensure you\'re on a Shopify storefront with AJAX Cart API enabled.');
-    return await res.json();
+
+    if (!res.ok) {
+      throw new Error(`Failed to access cart (HTTP ${res.status})`);
+    }
+
+    try {
+      return await res.json();
+    } catch (parseError) {
+      const contentType = res.headers.get('content-type');
+      throw new Error(`Expected JSON response but got ${contentType || 'unknown content type'}. This may not be a Shopify store or the API is unavailable.`);
+    }
   })();
 }
 
@@ -64,8 +79,18 @@ function _logCartInPage() {
       headers: { 'Accept': 'application/json' },
       credentials: 'same-origin'
     });
-    if (!res.ok) throw new Error('Unable to access cart. Please ensure you\'re on a Shopify storefront with AJAX Cart API enabled.');
-    const cart = await res.json();
+
+    if (!res.ok) {
+      throw new Error(`Failed to access cart (HTTP ${res.status})`);
+    }
+
+    let cart;
+    try {
+      cart = await res.json();
+    } catch (parseError) {
+      const contentType = res.headers.get('content-type');
+      throw new Error(`Expected JSON response but got ${contentType || 'unknown content type'}. This may not be a Shopify store or the API is unavailable.`);
+    }
 
     // Log with nice formatting to the page console
     console.group('%c🛒 Cart Tools for Shopify', 'font-size: 14px; font-weight: bold; color: #5C6AC4;');
@@ -97,8 +122,77 @@ function _clearCartInPage() {
       headers: { 'Accept': 'application/json' },
       credentials: 'same-origin'
     });
-    if (!res.ok) throw new Error('Failed to clear cart. Please try again or reload the page.');
-    return await res.json();
+
+    if (!res.ok) {
+      throw new Error(`Failed to clear cart (HTTP ${res.status})`);
+    }
+
+    try {
+      return await res.json();
+    } catch (parseError) {
+      const contentType = res.headers.get('content-type');
+      throw new Error(`Expected JSON response but got ${contentType || 'unknown content type'}.`);
+    }
+  })();
+}
+
+/**
+ * Removes all cart attributes on the Shopify page
+ * Injected into page context
+ * @returns {Promise<Object>} Updated cart JSON data
+ */
+function _removeCartAttributesInPage() {
+  return (async () => {
+    // First, get current cart to see what attributes exist
+    const cartRes = await fetch('/cart.js', {
+      headers: { 'Accept': 'application/json' },
+      credentials: 'same-origin'
+    });
+
+    if (!cartRes.ok) {
+      throw new Error(`Failed to access cart (HTTP ${cartRes.status})`);
+    }
+
+    let cart;
+    try {
+      cart = await cartRes.json();
+    } catch (parseError) {
+      const contentType = cartRes.headers.get('content-type');
+      throw new Error(`Expected JSON response but got ${contentType || 'unknown content type'}.`);
+    }
+
+    // If no attributes, nothing to do
+    if (!cart.attributes || Object.keys(cart.attributes).length === 0) {
+      throw new Error('No attributes found on cart.');
+    }
+
+    // Create update payload: set all attribute keys to empty string to remove them
+    const attributesToRemove = {};
+    Object.keys(cart.attributes).forEach(key => {
+      attributesToRemove[key] = '';
+    });
+
+    // Update cart with empty attributes
+    const updateRes = await fetch('/cart/update.js', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({ attributes: attributesToRemove })
+    });
+
+    if (!updateRes.ok) {
+      throw new Error(`Failed to remove cart attributes (HTTP ${updateRes.status})`);
+    }
+
+    try {
+      return await updateRes.json();
+    } catch (parseError) {
+      const contentType = updateRes.headers.get('content-type');
+      throw new Error(`Expected JSON response but got ${contentType || 'unknown content type'}.`);
+    }
   })();
 }
 
@@ -109,9 +203,21 @@ function _clearCartInPage() {
  */
 function _getProductInPage() {
   return (async () => {
-    // Try to extract product handle from URL or meta tags
-    const pathMatch = window.location.pathname.match(/\/products\/([^/?]+)/);
-    const handle = pathMatch?.[1];
+    // Support standard and localized product URLs
+    const patterns = [
+      /\/products\/([^/?]+)/,
+      /\/[a-z]{2}\/products\/([^/?]+)/,
+      /\/collections\/[^/]+\/products\/([^/?]+)/
+    ];
+
+    let handle = null;
+    for (const pattern of patterns) {
+      const match = window.location.pathname.match(pattern);
+      if (match) {
+        handle = match[1];
+        break;
+      }
+    }
 
     if (!handle) {
       throw new Error('Not on a product page. Visit a product page to use product tools.');
@@ -122,8 +228,16 @@ function _getProductInPage() {
       credentials: 'same-origin'
     });
 
-    if (!res.ok) throw new Error('Unable to access product data. Please ensure you\'re on a Shopify product page.');
-    return await res.json();
+    if (!res.ok) {
+      throw new Error(`Failed to access product data (HTTP ${res.status})`);
+    }
+
+    try {
+      return await res.json();
+    } catch (parseError) {
+      const contentType = res.headers.get('content-type');
+      throw new Error(`Expected JSON response but got ${contentType || 'unknown content type'}.`);
+    }
   })();
 }
 
@@ -134,8 +248,21 @@ function _getProductInPage() {
  */
 function _logProductInPage() {
   return (async () => {
-    const pathMatch = window.location.pathname.match(/\/products\/([^/?]+)/);
-    const handle = pathMatch?.[1];
+    // Support standard and localized product URLs
+    const patterns = [
+      /\/products\/([^/?]+)/,
+      /\/[a-z]{2}\/products\/([^/?]+)/,
+      /\/collections\/[^/]+\/products\/([^/?]+)/
+    ];
+
+    let handle = null;
+    for (const pattern of patterns) {
+      const match = window.location.pathname.match(pattern);
+      if (match) {
+        handle = match[1];
+        break;
+      }
+    }
 
     if (!handle) {
       throw new Error('Not on a product page. Visit a product page to use product tools.');
@@ -146,8 +273,17 @@ function _logProductInPage() {
       credentials: 'same-origin'
     });
 
-    if (!res.ok) throw new Error('Unable to access product data. Please ensure you\'re on a Shopify product page.');
-    const product = await res.json();
+    if (!res.ok) {
+      throw new Error(`Failed to access product data (HTTP ${res.status})`);
+    }
+
+    let product;
+    try {
+      product = await res.json();
+    } catch (parseError) {
+      const contentType = res.headers.get('content-type');
+      throw new Error(`Expected JSON response but got ${contentType || 'unknown content type'}.`);
+    }
 
     // Log with nice formatting to the page console
     console.group('%c📦 Cart Tools for Shopify', 'font-size: 14px; font-weight: bold; color: #5C6AC4;');
@@ -182,7 +318,8 @@ function _detectPageContext() {
       hasCart: false,
       isProductPage: false,
       productHandle: null,
-      cart: null
+      cart: null,
+      error: null
     };
 
     // Check if cart API is available
@@ -191,20 +328,36 @@ function _detectPageContext() {
         headers: { 'Accept': 'application/json' },
         credentials: 'same-origin'
       });
+
       if (cartRes.ok) {
-        context.isShopify = true;
-        context.hasCart = true;
-        context.cart = await cartRes.json();
+        // Try to parse as JSON - be lenient in detection
+        try {
+          context.cart = await cartRes.json();
+          context.isShopify = true;
+          context.hasCart = true;
+        } catch (parseError) {
+          // Not JSON, probably not a Shopify cart
+          context.error = 'Cart endpoint exists but returned non-JSON response';
+        }
       }
     } catch (e) {
-      // Not a Shopify site or cart unavailable
+      context.error = e.message;
     }
 
-    // Check if on a product page
-    const pathMatch = window.location.pathname.match(/\/products\/([^/?]+)/);
-    if (pathMatch) {
-      context.isProductPage = true;
-      context.productHandle = pathMatch[1];
+    // Check if on a product page - support localized URLs
+    const patterns = [
+      /\/products\/([^/?]+)/,
+      /\/[a-z]{2}\/products\/([^/?]+)/,
+      /\/collections\/[^/]+\/products\/([^/?]+)/
+    ];
+
+    for (const pattern of patterns) {
+      const match = window.location.pathname.match(pattern);
+      if (match) {
+        context.isProductPage = true;
+        context.productHandle = match[1];
+        break;
+      }
     }
 
     return context;
@@ -222,8 +375,18 @@ function _logInitInPage() {
       headers: { 'Accept': 'application/json' },
       credentials: 'same-origin'
     });
-    if (!res.ok) throw new Error('Cannot access /cart.js');
-    const cart = await res.json();
+
+    if (!res.ok) {
+      throw new Error(`Cannot access /cart.js (HTTP ${res.status})`);
+    }
+
+    let cart;
+    try {
+      cart = await res.json();
+    } catch (parseError) {
+      const contentType = res.headers.get('content-type');
+      throw new Error(`Expected JSON response but got ${contentType || 'unknown content type'}.`);
+    }
 
     // Fancy startup log
     console.log(
@@ -247,20 +410,36 @@ function _logInitInPage() {
  */
 async function runInPage(func) {
   const tabId = await getActiveTabId();
-  if (!tabId) throw new Error('No active tab.');
-
-  const [result] = await chrome.scripting.executeScript({
-    target: { tabId },
-    world: 'MAIN',
-    func
-  });
-
-  if (result?.result === undefined) {
-    const err = result?.error || result?.exceptionDetails?.message || 'No result from page.';
-    throw new Error(err);
+  if (!tabId) {
+    throw new Error('No active tab found. Please try clicking the extension icon again.');
   }
 
-  return result.result;
+  try {
+    const [result] = await chrome.scripting.executeScript({
+      target: { tabId },
+      world: 'MAIN',
+      func
+    });
+
+    if (result?.result === undefined) {
+      // Check for common Chrome extension errors
+      const err = result?.error || result?.exceptionDetails?.message || 'No result from page';
+
+      if (err.includes('Cannot access') || err.includes('chrome://') || err.includes('chrome-extension://')) {
+        throw new Error('Cannot run on this page. Chrome extensions are restricted on browser pages.');
+      }
+
+      throw new Error(err);
+    }
+
+    return result.result;
+  } catch (error) {
+    // Improve error messages for common scenarios
+    if (error.message.includes('Cannot access')) {
+      throw new Error('Cannot access this page. Try visiting a Shopify store.');
+    }
+    throw error;
+  }
 }
 
 /**
@@ -309,6 +488,7 @@ function disableButtons() {
   logBtn.disabled = true;
   copyBtn.disabled = true;
   clearBtn.disabled = true;
+  removeAttrsBtn.disabled = true;
   logProductBtn.disabled = true;
   copyProductBtn.disabled = true;
 }
@@ -320,6 +500,7 @@ function enableButtons() {
   logBtn.disabled = false;
   copyBtn.disabled = false;
   clearBtn.disabled = false;
+  removeAttrsBtn.disabled = false;
   logProductBtn.disabled = false;
   copyProductBtn.disabled = false;
 }
@@ -333,8 +514,19 @@ function updateUIForContext(context) {
   const productSection = document.querySelector('.section:has(#log-product)');
 
   if (!context.isShopify) {
-    // Not a Shopify site
-    summaryEl.textContent = 'Visit a Shopify store to use this extension';
+    // Not a Shopify site or error occurred
+    let message = 'Visit a Shopify store to use this extension';
+
+    // Provide more helpful error context if available
+    if (context.error) {
+      if (context.error.includes('Cannot access')) {
+        message = 'Cannot access this page. Try visiting a Shopify storefront.';
+      } else if (context.error.includes('chrome://')) {
+        message = 'Extensions cannot run on browser pages.';
+      }
+    }
+
+    summaryEl.textContent = message;
     summaryEl.className = 'summary muted';
     if (cartSection) cartSection.style.display = 'none';
     if (productSection) productSection.style.display = 'none';
@@ -363,7 +555,7 @@ function updateUIForContext(context) {
 // Initialize: Detect page context and update UI accordingly
 (async () => {
   try {
-    const context = await withTimeout(runInPage(_detectPageContext), API_TIMEOUT);
+    const context = await withTimeout(runInPage(_detectPageContext), API_TIMEOUT, 'Page detection');
     updateUIForContext(context);
 
     // Log to console if on Shopify site
@@ -372,9 +564,19 @@ function updateUIForContext(context) {
         // Ignore errors in console logging
       });
     }
-  } catch {
-    // Silently fail - not a Shopify site or unavailable
-    summaryEl.textContent = 'Visit a Shopify store to use this extension';
+  } catch (error) {
+    // Provide helpful error context
+    let message = 'Visit a Shopify store to use this extension';
+
+    if (error.message) {
+      if (error.message.includes('Cannot access') || error.message.includes('restricted')) {
+        message = 'Cannot access this page. Try visiting a Shopify storefront.';
+      } else if (error.message.includes('timed out')) {
+        message = 'Page is loading slowly. Please try again.';
+      }
+    }
+
+    summaryEl.textContent = message;
     summaryEl.className = 'summary muted';
   }
 })();
@@ -382,15 +584,18 @@ function updateUIForContext(context) {
 // Log cart to console (page console, not popup console)
 logBtn.addEventListener('click', async () => {
   setStatus('Reading cart…');
+  const originalText = logBtn.innerHTML;
+  logBtn.innerHTML = '<span class="icon">⏳</span><span>Loading…</span>';
   disableButtons();
 
   try {
-    const cart = await withTimeout(runInPage(_logCartInPage), API_TIMEOUT);
+    const cart = await withTimeout(runInPage(_logCartInPage), API_TIMEOUT, 'Reading cart');
     updateSummary(cart);
     setStatus(`Logged to page console. Items: ${cart.items?.length ?? 0}`, 'success');
   } catch (err) {
     setStatus(`Error: ${err.message || err}`, 'error');
   } finally {
+    logBtn.innerHTML = originalText;
     enableButtons();
   }
 });
@@ -400,18 +605,32 @@ copyBtn.addEventListener('click', async () => {
   setStatus('Copying cart…');
   disableButtons();
 
+  // Cancel any existing timeout
+  if (copyCartTimeout) {
+    clearTimeout(copyCartTimeout);
+    copyCartTimeout = null;
+  }
+
   try {
-    const cart = await withTimeout(runInPage(_getCartInPage), API_TIMEOUT);
-    await navigator.clipboard.writeText(JSON.stringify(cart, null, 2));
+    const cart = await withTimeout(runInPage(_getCartInPage), API_TIMEOUT, 'Fetching cart');
+
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(cart, null, 2));
+    } catch (clipboardErr) {
+      throw new Error('Failed to copy to clipboard. Please check permissions.');
+    }
+
     updateSummary(cart);
 
     // Visual feedback: checkmark
-    const originalText = copyBtn.textContent;
-    copyBtn.textContent = '✓ Copied!';
+    const iconSpan = copyBtn.querySelector('.icon');
+    const originalIcon = iconSpan.textContent;
+    iconSpan.textContent = '✓';
     setStatus('Cart JSON copied to clipboard.', 'success');
 
-    setTimeout(() => {
-      copyBtn.textContent = originalText;
+    copyCartTimeout = setTimeout(() => {
+      iconSpan.textContent = originalIcon;
+      copyCartTimeout = null;
     }, 2000);
   } catch (err) {
     setStatus(`Error: ${err.message || err}`, 'error');
@@ -425,10 +644,12 @@ clearBtn.addEventListener('click', async () => {
   if (!confirm('Empty the cart on this site?')) return;
 
   setStatus('Clearing cart…');
+  const originalText = clearBtn.innerHTML;
+  clearBtn.innerHTML = '<span class="icon">⏳</span><span>Clearing…</span>';
   disableButtons();
 
   try {
-    const cart = await withTimeout(runInPage(_clearCartInPage), API_TIMEOUT);
+    const cart = await withTimeout(runInPage(_clearCartInPage), API_TIMEOUT, 'Clearing cart');
     updateSummary(cart);
     setStatus(`Cart cleared. Reloading page…`, 'success');
 
@@ -442,6 +663,7 @@ clearBtn.addEventListener('click', async () => {
     }
   } catch (err) {
     setStatus(`Error: ${err.message || err}`, 'error');
+    clearBtn.innerHTML = originalText;
     enableButtons();
   }
 });
@@ -449,14 +671,17 @@ clearBtn.addEventListener('click', async () => {
 // Log product to console
 logProductBtn.addEventListener('click', async () => {
   setStatus('Reading product…');
+  const originalText = logProductBtn.innerHTML;
+  logProductBtn.innerHTML = '<span class="icon">⏳</span><span>Loading…</span>';
   disableButtons();
 
   try {
-    const product = await withTimeout(runInPage(_logProductInPage), API_TIMEOUT);
+    const product = await withTimeout(runInPage(_logProductInPage), API_TIMEOUT, 'Reading product');
     setStatus(`Logged to console: ${product.title || 'Product'}`, 'success');
   } catch (err) {
     setStatus(`Error: ${err.message || err}`, 'error');
   } finally {
+    logProductBtn.innerHTML = originalText;
     enableButtons();
   }
 });
@@ -466,21 +691,63 @@ copyProductBtn.addEventListener('click', async () => {
   setStatus('Copying product…');
   disableButtons();
 
+  // Cancel any existing timeout
+  if (copyProductTimeout) {
+    clearTimeout(copyProductTimeout);
+    copyProductTimeout = null;
+  }
+
   try {
-    const product = await withTimeout(runInPage(_getProductInPage), API_TIMEOUT);
-    await navigator.clipboard.writeText(JSON.stringify(product, null, 2));
+    const product = await withTimeout(runInPage(_getProductInPage), API_TIMEOUT, 'Fetching product');
+
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(product, null, 2));
+    } catch (clipboardErr) {
+      throw new Error('Failed to copy to clipboard. Please check permissions.');
+    }
 
     // Visual feedback: checkmark
-    const originalText = copyProductBtn.textContent;
-    copyProductBtn.textContent = '✓ Copied!';
+    const iconSpan = copyProductBtn.querySelector('.icon');
+    const originalIcon = iconSpan.textContent;
+    iconSpan.textContent = '✓';
     setStatus('Product JSON copied to clipboard.', 'success');
 
-    setTimeout(() => {
-      copyProductBtn.textContent = originalText;
+    copyProductTimeout = setTimeout(() => {
+      iconSpan.textContent = originalIcon;
+      copyProductTimeout = null;
     }, 2000);
   } catch (err) {
     setStatus(`Error: ${err.message || err}`, 'error');
   } finally {
+    enableButtons();
+  }
+});
+
+// Remove all cart attributes
+removeAttrsBtn.addEventListener('click', async () => {
+  if (!confirm('Remove all cart attributes?')) return;
+
+  setStatus('Removing attributes…');
+  const originalText = removeAttrsBtn.innerHTML;
+  removeAttrsBtn.innerHTML = '<span class="icon">⏳</span><span>Removing…</span>';
+  disableButtons();
+
+  try {
+    const cart = await withTimeout(runInPage(_removeCartAttributesInPage), API_TIMEOUT, 'Removing attributes');
+    updateSummary(cart);
+    setStatus('Cart attributes removed. Reloading page…', 'success');
+
+    // Update badge
+    notifyBadgeUpdate();
+
+    // Reload the page to reflect changes
+    const tabId = await getActiveTabId();
+    if (tabId) {
+      chrome.tabs.reload(tabId);
+    }
+  } catch (err) {
+    setStatus(`Error: ${err.message || err}`, 'error');
+    removeAttrsBtn.innerHTML = originalText;
     enableButtons();
   }
 });

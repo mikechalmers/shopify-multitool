@@ -118,6 +118,21 @@
         gap: 8px;
       }
 
+      .button-row {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+
+      .button-row button:first-child {
+        flex: 1;
+      }
+
+      .button-row button:last-child:not(:first-child) {
+        flex: 0 0 auto;
+        width: auto;
+      }
+
       button {
         width: 100%;
         padding: 10px 12px;
@@ -214,15 +229,21 @@
     <div class="section">
       <h2 class="section-title">🛒 Cart Tools</h2>
       <div class="button-group">
-        <button id="log">
-          <span class="icon">📋</span>
-          <span>Log cart to console</span>
+        <div class="button-row">
+          <button id="log" aria-label="Log cart data to page console">
+            <span class="icon">📋</span>
+            <span>Log to console</span>
+          </button>
+          <button id="copy" aria-label="Copy cart JSON to clipboard">
+            <span class="icon">📄</span>
+            <span>Copy</span>
+          </button>
+        </div>
+        <button id="remove-attrs" aria-label="Remove all cart attributes">
+          <span class="icon">✂️</span>
+          <span>Remove attributes</span>
         </button>
-        <button id="copy">
-          <span class="icon">📄</span>
-          <span>Copy cart JSON</span>
-        </button>
-        <button id="clear" class="danger">
+        <button id="clear" class="danger" aria-label="Empty cart and reload page">
           <span class="icon">🗑️</span>
           <span>Empty cart</span>
         </button>
@@ -232,19 +253,21 @@
     <div class="section">
       <h2 class="section-title">📦 Product Tools</h2>
       <div class="button-group">
-        <button id="log-product">
-          <span class="icon">📋</span>
-          <span>Log product to console</span>
-        </button>
-        <button id="copy-product">
-          <span class="icon">📄</span>
-          <span>Copy product JSON</span>
-        </button>
+        <div class="button-row">
+          <button id="log-product" aria-label="Log product data to page console">
+            <span class="icon">📋</span>
+            <span>Log to console</span>
+          </button>
+          <button id="copy-product" aria-label="Copy product JSON to clipboard">
+            <span class="icon">📄</span>
+            <span>Copy</span>
+          </button>
+        </div>
       </div>
     </div>
 
     <div class="footer">
-      <div class="status" id="status"></div>
+      <div class="status" id="status" role="status" aria-live="polite" aria-atomic="true"></div>
     </div>
 
     <script type="module" src="popup.js"></script>
