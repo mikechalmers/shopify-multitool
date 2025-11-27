@@ -5,15 +5,15 @@ A Chrome extension that provides developer tools for inspecting and managing Sho
 ## Features
 
 ### Cart Tools
-- **View Cart Summary** - See item count and total price at a glance
-- **Log Cart to Console** - Output formatted cart data to your browser's developer console with item table
-- **Copy Cart JSON** - Copy the complete cart object to your clipboard for analysis
-- **Remove Attributes** - Clear all cart-level attributes with one click
-- **Empty Cart** - Clear all items from the cart with one click
+- **Log cart** - Output formatted cart data to your browser's developer console with item table
+- **Copy cart** - Copy the complete cart JSON to your clipboard for analysis
+- **Remove attributes** - Clear all cart-level attributes with one click
+- **Empty cart** - Clear all items from the cart and reload the page
 
 ### Product Tools (on product pages)
-- **Log Product to Console** - Output formatted product data with variant table
-- **Copy Product JSON** - Copy complete product data to clipboard for analysis
+- **Log product** - Output formatted product data to console with variant table
+- **Copy product** - Copy complete product JSON to clipboard for analysis
+- **Get SKUs** - Open a modal showing all product variants with SKU and price. Each variant has an individual copy button.
 
 ### Smart Features
 - Automatically detects page context and shows relevant tools
@@ -22,6 +22,7 @@ A Chrome extension that provides developer tools for inspecting and managing Sho
 - Per-button loading indicators for visual feedback
 - Comprehensive error messages with specific troubleshooting context
 - Screen reader accessible with ARIA live regions
+- **Send Feedback** - Submit bug reports, feature requests, or general feedback directly from the extension
 
 ## Installation
 
@@ -44,12 +45,12 @@ A Chrome extension that provides developer tools for inspecting and managing Sho
 
 ### Cart Tools (shown on all Shopify pages)
 
-**Log to console**
+**Log cart**
 - Outputs beautifully formatted cart data to the page's console (not the popup console)
 - Open Developer Tools (F12 or Cmd+Option+I) on the storefront page to see the output
 - Includes a table view of cart items with titles, variants, quantities, and prices
 
-**Copy (inline button)**
+**Copy cart**
 - Copies the complete cart object as formatted JSON to your clipboard
 - Perfect for debugging, testing, or data analysis
 - Button shows "✓" confirmation for 2 seconds
@@ -67,13 +68,40 @@ A Chrome extension that provides developer tools for inspecting and managing Sho
 
 ### Product Tools (shown only on product pages)
 
-**Log to console**
+**Log product**
 - Outputs formatted product data to the page's console
 - Includes a table view of variants with SKU, price, and availability
 
-**Copy (inline button)**
+**Copy product**
 - Copies complete product JSON to clipboard
 - Includes all variants, images, options, and metadata
+
+**Get SKUs**
+- Opens a large modal on the page displaying all product variants
+- Shows each variant's title, SKU, and price
+- Click "Copy" button on any variant to copy its SKU to clipboard
+- Button shows green "✓" on success or red "✗" on failure for 2 seconds
+- Close modal by clicking the X button, clicking outside the modal, or pressing ESC
+- Modal appears on the page itself (not in the popup) for better visibility and larger size
+- Automatically matches your system's dark/light mode preference
+- Extension popup closes automatically after launching modal for immediate use
+- Scrollable list supports products with many variants
+
+### Send Feedback
+
+**Located in footer below status message**
+- Dashed border button for subtle appearance
+- Opens a feedback form modal on the page
+
+**Feedback Form**
+- **Name** (optional) - Your name
+- **Email** (optional) - For follow-up if needed
+- **Feedback Type** - Choose from Bug Report, Feature Request, or General Feedback
+- **Message** (required) - Your feedback, bug report, or feature request
+- Submit button sends data to developer's API endpoint
+- Success message appears and modal auto-closes after 2 seconds
+- Form includes helpful metadata: timestamp, browser info, and current page URL
+- Fully isolated from page CSS with dark/light mode support
 
 ## Compatibility
 
@@ -91,12 +119,17 @@ This extension works with **Shopify storefronts that use the classic AJAX Cart A
 
 ## Privacy
 
-**This extension does not collect, store, or transmit any data.**
+**This extension does not collect, store, or transmit any data automatically.**
 
-All operations happen locally in your browser:
+All core operations happen locally in your browser:
 - Cart data is fetched directly from the Shopify site you're viewing
-- No information is sent to external servers
+- No information is sent to external servers without your explicit action
 - No tracking or analytics
+
+**Feedback Feature:**
+- Only when you explicitly click "Send Feedback" and submit the form, data is sent to the developer's API
+- Data submitted includes: your optional name/email, feedback message, feedback type, timestamp, browser user agent, and current page URL
+- This is entirely optional and only happens when you choose to send feedback
 
 See [PRIVACY.md](PRIVACY.md) for full details.
 

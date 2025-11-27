@@ -103,13 +103,14 @@
       }
 
       .section-title {
-        font-size: 11px;
-        font-weight: 600;
+        font-size: 13px;
+        font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: var(--text-muted);
-        margin: 0 0 10px 0;
+        letter-spacing: 0.8px;
+        color: var(--text-primary);
+        margin: 0 0 12px 0;
         padding: 0;
+        opacity: 0.9;
       }
 
       .button-group {
@@ -124,13 +125,8 @@
         align-items: center;
       }
 
-      .button-row button:first-child {
+      .button-row button {
         flex: 1;
-      }
-
-      .button-row button:last-child:not(:first-child) {
-        flex: 0 0 auto;
-        width: auto;
       }
 
       button {
@@ -219,6 +215,22 @@
         font-size: 14px;
         display: inline-block;
       }
+
+      .feedback-btn {
+        margin-bottom: 12px;
+        width: 100%;
+        font-size: 12px;
+        padding: 8px 12px;
+        background: transparent;
+        border: 1px dashed var(--border);
+        color: var(--text-secondary);
+      }
+
+      .feedback-btn:hover:not(:disabled) {
+        background: var(--bg-secondary);
+        border-style: solid;
+        color: var(--text-primary);
+      }
     </style>
   </head>
   <body>
@@ -232,11 +244,11 @@
         <div class="button-row">
           <button id="log" aria-label="Log cart data to page console">
             <span class="icon">📋</span>
-            <span>Log to console</span>
+            <span>Log cart</span>
           </button>
           <button id="copy" aria-label="Copy cart JSON to clipboard">
             <span class="icon">📄</span>
-            <span>Copy</span>
+            <span>Copy cart</span>
           </button>
         </div>
         <button id="remove-attrs" aria-label="Remove all cart attributes">
@@ -256,17 +268,25 @@
         <div class="button-row">
           <button id="log-product" aria-label="Log product data to page console">
             <span class="icon">📋</span>
-            <span>Log to console</span>
+            <span>Log product</span>
           </button>
           <button id="copy-product" aria-label="Copy product JSON to clipboard">
             <span class="icon">📄</span>
-            <span>Copy</span>
+            <span>Copy product</span>
           </button>
         </div>
+        <button id="view-skus" aria-label="Get product variant SKUs">
+          <span class="icon">🏷️</span>
+          <span>Get SKUs</span>
+        </button>
       </div>
     </div>
 
     <div class="footer">
+      <button id="feedback-btn" class="feedback-btn" aria-label="Send feedback">
+        <span class="icon">💬</span>
+        <span>Send Feedback</span>
+      </button>
       <div class="status" id="status" role="status" aria-live="polite" aria-atomic="true"></div>
     </div>
 

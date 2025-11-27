@@ -5,7 +5,7 @@ This checklist covers all requirements for submitting "Cart Tools for Shopify" t
 ## ✅ Pre-Submission Completed Items
 
 - [x] Extension name avoids trademark issues ("Cart Tools for Shopify" instead of "Shopify Cart Tools")
-- [x] Version number updated to 1.0.0 (production-ready)
+- [x] Version number updated to 1.3.1 (production-ready)
 - [x] Privacy policy created (PRIVACY.md)
 - [x] User-facing README with usage instructions
 - [x] Author field added to manifest.json
@@ -14,6 +14,10 @@ This checklist covers all requirements for submitting "Cart Tools for Shopify" t
 - [x] Manifest V3 compliance
 - [x] Content Security Policy defined
 - [x] Minimal permissions requested (activeTab, scripting, clipboardWrite)
+- [x] Advanced features implemented (SKU modal, feedback system)
+- [x] CSS isolation for modals to prevent theme conflicts
+- [x] Dark/light mode support
+- [x] Improved visual hierarchy and button labels
 
 ## 📋 Required Before Submission
 
@@ -27,10 +31,12 @@ This checklist covers all requirements for submitting "Cart Tools for Shopify" t
 
 #### Screenshots (Required - at least 1, max 5)
 - [ ] Create 1280x800px (or 640x400px) screenshots showing:
-  - Extension popup open on a Shopify store
+  - Extension popup open on a Shopify store (showing improved UI with clear section headers)
   - Cart summary display with items
-  - Console output after clicking "Log cart to console"
-  - Success state after copying cart JSON
+  - Console output after clicking "Log cart"
+  - Get SKUs modal displaying product variants with copy buttons
+  - Feedback form modal open
+  - Success state after copying cart JSON or SKU
 
 **How to create:**
 ```bash
@@ -60,25 +66,36 @@ This checklist covers all requirements for submitting "Cart Tools for Shopify" t
   ```
   Cart Tools for Shopify is a powerful yet lightweight developer extension that provides
   essential debugging and inspection tools for Shopify storefronts. Access cart and
-  product data instantly with an intuitive interface that adapts to your workflow.
+  product data instantly with an intuitive, redesigned interface that adapts to your
+  workflow and provides advanced features like SKU viewing and integrated feedback.
 
   CART TOOLS:
   • View cart summary (item count and total) at a glance
-  • Log beautifully formatted cart data to browser console with item tables
-  • Copy complete cart JSON to clipboard with inline copy button
-  • Remove all cart attributes with one click (perfect for testing)
-  • Empty cart with one click (with confirmation)
+  • Log cart - beautifully formatted cart data to browser console with item tables
+  • Copy cart - complete cart JSON to clipboard with one click
+  • Remove attributes - clear all cart-level attributes with one click (perfect for testing)
+  • Empty cart - clear all items with confirmation and automatic page reload
   • Real-time cart item badge on extension icon
+  • Clear, descriptive button labels that state exactly what they do
 
   PRODUCT TOOLS (shown only on product pages):
   • Automatically detect when you're on a product page
-  • Log detailed product data including all variants to console
-  • Copy complete product JSON with inline copy button
-  • View variant information in formatted console tables
+  • Log product - detailed product data including all variants to console
+  • Copy product - complete product JSON to clipboard
+  • Get SKUs - NEW! Opens a large, page-injected modal showing all product variants
+    - View all variant titles, SKUs, and prices in one place
+    - Individual copy button for each SKU with instant visual feedback
+    - Green checkmark on success, red X on failure
+    - Supports products with many variants (scrollable list)
+    - Fully isolated from page CSS to prevent style conflicts
+    - Auto-matches your system's dark/light mode
+    - Close with X button, backdrop click, or ESC key
   • Works with standard, localized, and collection product URLs
 
   SMART FEATURES:
   • Context-aware UI - automatically shows/hides relevant tools based on page type
+  • Enhanced visual hierarchy - bold section headers clearly separate Cart and Product tools
+  • Equal-width paired buttons for balanced, professional appearance
   • Per-button loading indicators for clear visual feedback
   • Comprehensive error messages with specific troubleshooting context
   • Support for localized URLs (e.g., /en/products/handle)
@@ -86,6 +103,21 @@ This checklist covers all requirements for submitting "Cart Tools for Shopify" t
   • Timeout protection for slow-loading pages with detailed error context
   • Screen reader accessible with ARIA live regions
   • Works directly in the page context for reliable API access
+  • Send Feedback - submit bug reports, feature requests, or general feedback directly
+    from the extension with optional contact information
+
+  NEW IN v1.3.1:
+  • Feedback webhook integration for bug reports and feature requests
+  • Extension metadata in feedback submissions for multi-extension support
+  • Automated build system with npm scripts
+
+  v1.3.0:
+  • Get SKUs modal for viewing and copying variant SKUs
+  • Integrated feedback system
+  • Improved button labels ("Log cart", "Copy product", etc.)
+  • Enhanced section headers with better visibility
+  • CSS isolation for modals prevents conflicts with Shopify themes
+  • Auto-closing popup when modals open for immediate interaction
 
   PERFECT FOR:
   • Shopify theme developers debugging cart and product functionality
@@ -93,7 +125,7 @@ This checklist covers all requirements for submitting "Cart Tools for Shopify" t
   • Developers working with cart attributes and custom properties
   • QA engineers verifying product and cart behavior
   • Developers building custom cart experiences
-  • Anyone needing quick access to Shopify AJAX API data
+  • Anyone needing quick access to Shopify AJAX API data and SKUs
 
   COMPATIBILITY:
   Works with classic Shopify themes and any storefront using Shopify's
@@ -102,8 +134,9 @@ This checklist covers all requirements for submitting "Cart Tools for Shopify" t
   with headless implementations without the standard API endpoints.
 
   PRIVACY & SECURITY:
-  This extension does not collect, store, or transmit any data. All
-  operations occur locally in your browser. No external servers, no tracking,
+  This extension does not automatically collect, store, or transmit any data.
+  All core operations occur locally in your browser. The optional feedback
+  feature only sends data when you explicitly submit the form. No tracking,
   no telemetry. Your data stays private. See our privacy policy for full details.
   ```
 
@@ -115,7 +148,8 @@ This checklist covers all requirements for submitting "Cart Tools for Shopify" t
 - [ ] **Single Purpose Description** (required for extensions with narrow use case):
   ```
   This extension provides developer tools for inspecting and managing
-  Shopify cart data on storefronts via the AJAX Cart API.
+  Shopify cart and product data on storefronts via the AJAX Cart API,
+  with features for viewing variant SKUs and submitting feedback.
   ```
 
 - [ ] **Permission Justifications** (explain each permission):
@@ -143,10 +177,17 @@ This checklist covers all requirements for submitting "Cart Tools for Shopify" t
 - [ ] Test on multiple Shopify stores (demo stores, myshopify.com stores)
 - [ ] Verify all features work:
   - [ ] Badge updates correctly
-  - [ ] Log to console shows formatted output
-  - [ ] Copy to clipboard works
+  - [ ] Log cart/product shows formatted output in console
+  - [ ] Copy cart/product to clipboard works
+  - [ ] Get SKUs modal opens and displays variants
+  - [ ] Individual SKU copy buttons work with visual feedback
+  - [ ] SKU modal respects dark/light mode
+  - [ ] Feedback modal opens and form submits (test with placeholder API)
   - [ ] Clear cart prompts confirmation and works
+  - [ ] Remove attributes works
   - [ ] Error messages display for non-Shopify sites
+  - [ ] Popup auto-closes when modals open
+  - [ ] Modals properly isolated from page CSS
 
 #### Code Quality
 - [ ] No console errors or warnings
@@ -158,22 +199,18 @@ This checklist covers all requirements for submitting "Cart Tools for Shopify" t
 #### Package Preparation
 - [ ] Create ZIP file of extension:
   ```bash
-  cd /Users/michaelchalmers/shopify-multitool
+  npm run build
+  ```
 
-  # Create zip with only required files for Chrome Web Store
-  zip -r cart-tools-for-shopify-v1.2.0.zip \
-    manifest.json \
-    popup.html \
-    popup.js \
-    background.js \
-    icons/ \
-    PRIVACY.md \
-    -x "*.DS_Store" "*.git*"
+  This will automatically:
+  - Read the version from `manifest.json`
+  - Clean up old builds
+  - Create `cart-tools-for-shopify-v1.3.1.zip` with all required files
+  - Show the file size
 
-  # Alternative: Exclude unnecessary files from current directory
-  # zip -r cart-tools-for-shopify-v1.2.0.zip . \
-  #   -x "*.git*" "*.DS_Store" "node_modules/*" "*.md" "!PRIVACY.md" \
-  #   "TODO.md" "CHANGELOG.md" "CLAUDE.md" "SUBMISSION_CHECKLIST.md" "README.md"
+  **Alternative manual method:**
+  ```bash
+  npm run zip
   ```
 
   **Files required for Chrome Web Store:**

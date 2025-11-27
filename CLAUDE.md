@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Shopify Cart Tools** - A Chrome extension (Manifest V3) that provides developer tools for Shopify storefronts. Allows developers to inspect, copy, and manipulate cart and product data via Shopify's AJAX API.
+**Shopify Cart Tools** - A Chrome extension (Manifest V3) that provides developer tools for Shopify storefronts. Allows developers to inspect, copy, and manipulate cart and product data via Shopify's AJAX API. Includes advanced features like SKU viewer modal and integrated feedback system.
 
 ## Development Workflow
 
@@ -72,19 +72,63 @@ The extension includes comprehensive error handling:
 ## Features
 
 ### Cart Tools (Visible on any Shopify page with cart API)
-- **Log to console** - Logs formatted cart data to the page's console with item table
-- **Copy cart JSON** - Copies full cart JSON to clipboard (with visual feedback)
+- **Log cart** - Logs formatted cart data to the page's console with item table
+- **Copy cart** - Copies full cart JSON to clipboard (with visual feedback)
 - **Remove attributes** - Removes all cart-level attributes via `/cart/update.js`
 - **Empty cart** - Clears all items and reloads the page
 
 ### Product Tools (Visible only on product pages)
-- **Log to console** - Logs formatted product data to the page's console with variant table
-- **Copy product JSON** - Copies full product JSON to clipboard
+- **Log product** - Logs formatted product data to the page's console with variant table
+- **Copy product** - Copies full product JSON to clipboard
+- **Get SKUs** - Opens a modal displaying all product variants with their SKU and price. Each variant has an individual copy button for quick SKU copying.
+
+### SKU Modal (v1.3.0+)
+The extension includes a page-injected modal for displaying product variant information:
+- **Page injection** - Modal is injected into the Shopify page DOM (not popup), allowing larger size (600px max-width, 80vh max-height)
+- **CSS isolation** - Uses `all: initial` on all elements with `!important` flags to prevent page CSS from affecting modal styles
+- **Inline styles** - All styles are inline and defensive to avoid conflicts with page CSS
+- **High z-index** - Uses z-index: 999999 to appear above page content
+- **Dark/light mode** - Automatically detects system color scheme preference using `prefers-color-scheme` and applies appropriate colors
+- **Auto-close popup** - Popup closes automatically after modal launches, allowing immediate interaction with modal
+- **Scrollable content** - Handles products with many variants
+- **Variant cards** - Each displays variant title, SKU (monospace font), and price
+- **Individual copy buttons** - Per-variant copy functionality with visual feedback (green checkmark for 2s on success, red X on failure)
+- **Close options** - Close button (×), backdrop click, or ESC key
+- **Self-contained** - All logic runs in page context with no dependencies on popup after injection
+
+### Feedback System (v1.3.0+)
+- **Feedback button** - Located in footer below status message with dashed border styling
+- **Feedback modal** - Page-injected modal with form (similar architecture to SKU modal)
+- **Form fields** - Name (optional), Email (optional), Feedback Type dropdown, Message (required)
+- **API endpoint** - Located at `popup.js:493` - Update `API_ENDPOINT` constant with your API URL
+- **Submission** - POSTs JSON with feedback data, user agent, timestamp, and current URL
+- **Success/error handling** - Shows inline status messages, closes modal on success after 2s
 
 ### Smart Context Detection
 - Automatically detects if page is a Shopify store with cart API
 - Shows/hides sections based on page type (cart tools, product tools)
 - Supports localized and collection URLs (e.g., `/en/products/handle`, `/collections/name/products/handle`)
+
+## UI/UX Design (v1.3.0+)
+
+### Visual Hierarchy
+- **Section headers** - Bold, prominent headers (13px, weight 700, primary color) clearly separate Cart Tools from Product Tools
+- **Button labels** - Descriptive labels that explicitly state what data they operate on ("Log cart", "Copy product")
+- **Equal-width buttons** - Paired buttons (Log/Copy) use 50/50 split for balanced, professional appearance
+- **Dashed border feedback button** - Subtle styling to avoid visual clutter in footer
+
+### Design Principles
+- **Clarity over brevity** - Button labels prioritize understanding ("Log cart" vs "Log")
+- **Consistent spacing** - 6px gap between paired buttons, 8px gap in button groups, 12px below section headers
+- **Visual feedback** - Loading states (⏳), success (✓), error states on all interactive elements
+- **Accessibility** - ARIA labels, live regions for screen readers, proper semantic HTML
+
+### Modal Architecture
+- **Page injection pattern** - Modals injected into page DOM (not constrained by popup size)
+- **CSS isolation strategy** - `all: initial` + `!important` flags prevent theme conflicts
+- **Dark/light mode** - Automatic detection via `prefers-color-scheme` media query
+- **Auto-close popup** - Popup closes after modal launch for immediate interaction
+- **Consistent styling** - Both SKU and feedback modals use same color scheme and design language
 
 ## Extension Permissions
 

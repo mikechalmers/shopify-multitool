@@ -11,6 +11,8 @@ const clearBtn = document.getElementById('clear');
 const removeAttrsBtn = document.getElementById('remove-attrs');
 const logProductBtn = document.getElementById('log-product');
 const copyProductBtn = document.getElementById('copy-product');
+const viewSkusBtn = document.getElementById('view-skus');
+const feedbackBtn = document.getElementById('feedback-btn');
 
 const API_TIMEOUT = 10000; // 10 seconds
 
@@ -41,6 +43,788 @@ function withTimeout(promise, ms, operation = 'Operation') {
       setTimeout(() => reject(new Error(`${operation} timed out after ${ms / 1000}s. Please check your connection and try again.`)), ms)
     )
   ]);
+}
+
+/**
+ * Shows SKU modal in the page context
+ * Injected into page context
+ * @returns {Promise<string>} Success message
+ */
+function _showSkuModalInPage() {
+  return (async () => {
+    // Get product handle from URL
+    const patterns = [
+      /\/products\/([^/?]+)/,
+      /\/[a-z]{2}\/products\/([^/?]+)/,
+      /\/collections\/[^/]+\/products\/([^/?]+)/
+    ];
+
+    let handle = null;
+    for (const pattern of patterns) {
+      const match = window.location.pathname.match(pattern);
+      if (match) {
+        handle = match[1];
+        break;
+      }
+    }
+
+    if (!handle) {
+      throw new Error('Not on a product page.');
+    }
+
+    // Fetch product data
+    const res = await fetch(`/products/${handle}.js`, {
+      headers: { 'Accept': 'application/json' },
+      credentials: 'same-origin'
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to access product data (HTTP ${res.status})`);
+    }
+
+    let product;
+    try {
+      product = await res.json();
+    } catch (parseError) {
+      const contentType = res.headers.get('content-type');
+      throw new Error(`Expected JSON response but got ${contentType || 'unknown content type'}.`);
+    }
+
+    // Check if modal already exists and remove it
+    const existingModal = document.getElementById('shopify-cart-tools-sku-modal');
+    if (existingModal) {
+      existingModal.remove();
+    }
+
+    // Detect dark mode preference
+    const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    // Color scheme variables
+    const colors = isDarkMode ? {
+      bgPrimary: '#1e1e1e',
+      bgSecondary: '#2a2a2a',
+      bgTertiary: '#333333',
+      textPrimary: '#e8eaed',
+      textSecondary: '#bdc1c6',
+      textMuted: '#9aa0a6',
+      border: '#3c4043',
+      borderHover: '#5f6368',
+      accent: '#8ab4f8',
+      accentHover: '#aecbfa',
+      success: '#81c995',
+      error: '#f28b82',
+      shadow: 'rgba(0, 0, 0, 0.5)'
+    } : {
+      bgPrimary: '#ffffff',
+      bgSecondary: '#f8f9fa',
+      bgTertiary: '#e8ecf1',
+      textPrimary: '#1a1d23',
+      textSecondary: '#5f6368',
+      textMuted: '#9aa0a6',
+      border: '#dadce0',
+      borderHover: '#5f6368',
+      accent: '#5C6AC4',
+      accentHover: '#4c5ab8',
+      success: '#0f9d58',
+      error: '#d93025',
+      shadow: 'rgba(0, 0, 0, 0.3)'
+    };
+
+    // Create modal HTML with inline styles
+    const modalHTML = `
+      <div id="shopify-cart-tools-sku-modal" style="
+        all: initial;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        z-index: 999999 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+      ">
+        <div class="modal-backdrop" style="
+          all: initial;
+          position: absolute !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: 100% !important;
+          height: 100% !important;
+          background: rgba(0, 0, 0, 0.6) !important;
+          backdrop-filter: blur(3px) !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        "></div>
+        <div class="modal-container" style="
+          all: initial;
+          position: relative !important;
+          background: ${colors.bgPrimary} !important;
+          border-radius: 16px !important;
+          box-shadow: 0 20px 60px ${colors.shadow} !important;
+          width: 90% !important;
+          max-width: 600px !important;
+          max-height: 80vh !important;
+          display: flex !important;
+          flex-direction: column !important;
+          border: 1px solid ${colors.border} !important;
+          z-index: 1000000 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          box-sizing: border-box !important;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+        ">
+          <div class="modal-header" style="
+            all: initial;
+            padding: 20px 24px !important;
+            border-bottom: 1px solid ${colors.border} !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            background: ${colors.bgSecondary} !important;
+            border-radius: 16px 16px 0 0 !important;
+            margin: 0 !important;
+            box-sizing: border-box !important;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+          ">
+            <h3 style="
+              all: initial;
+              margin: 0 !important;
+              padding: 0 !important;
+              font-size: 18px !important;
+              font-weight: 600 !important;
+              color: ${colors.textPrimary} !important;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+              line-height: 1.2 !important;
+              text-align: left !important;
+              text-transform: none !important;
+              letter-spacing: normal !important;
+              display: block !important;
+            ">Product Variants & SKUs</h3>
+            <button class="modal-close-btn" style="
+              all: initial;
+              width: 32px !important;
+              height: 32px !important;
+              padding: 0 !important;
+              border-radius: 50% !important;
+              border: 1px solid ${colors.border} !important;
+              background: ${colors.bgPrimary} !important;
+              color: ${colors.textSecondary} !important;
+              font-size: 24px !important;
+              line-height: 1 !important;
+              cursor: pointer !important;
+              display: flex !important;
+              align-items: center !important;
+              justify-content: center !important;
+              transition: all 0.15s ease !important;
+              margin: 0 !important;
+              box-sizing: border-box !important;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+              text-decoration: none !important;
+              text-transform: none !important;
+              letter-spacing: normal !important;
+            ">×</button>
+          </div>
+          <div class="modal-content" style="
+            all: initial;
+            padding: 20px 24px !important;
+            overflow-y: auto !important;
+            flex: 1 !important;
+            min-height: 0 !important;
+            margin: 0 !important;
+            box-sizing: border-box !important;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+          ">
+            <div class="variant-list" style="
+              all: initial;
+              display: flex !important;
+              flex-direction: column !important;
+              gap: 12px !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              box-sizing: border-box !important;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+            ">
+              ${product.variants && product.variants.length > 0
+                ? product.variants.map((variant, index) => `
+                  <div class="variant-item" style="
+                    all: initial;
+                    background: ${colors.bgSecondary} !important;
+                    border: 1px solid ${colors.border} !important;
+                    border-radius: 8px !important;
+                    padding: 16px !important;
+                    transition: all 0.15s ease !important;
+                    margin: 0 !important;
+                    box-sizing: border-box !important;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+                    display: block !important;
+                  ">
+                    <div style="
+                      all: initial;
+                      display: flex !important;
+                      justify-content: space-between !important;
+                      align-items: center !important;
+                      gap: 12px !important;
+                      margin-bottom: 12px !important;
+                      margin-top: 0 !important;
+                      margin-left: 0 !important;
+                      margin-right: 0 !important;
+                      padding: 0 !important;
+                      box-sizing: border-box !important;
+                      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+                    ">
+                      <div style="
+                        all: initial;
+                        font-size: 14px !important;
+                        font-weight: 600 !important;
+                        color: ${colors.textPrimary} !important;
+                        flex: 1 !important;
+                        line-height: 1.4 !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+                        text-transform: none !important;
+                        letter-spacing: normal !important;
+                        text-align: left !important;
+                        display: block !important;
+                      ">${variant.title || `Variant ${index + 1}`}</div>
+                      <button class="copy-sku-btn" data-sku="${variant.sku || ''}" style="
+                        all: initial;
+                        padding: 6px 12px !important;
+                        font-size: 12px !important;
+                        height: 28px !important;
+                        border-radius: 6px !important;
+                        background: ${colors.accent} !important;
+                        border: 1px solid ${colors.accent} !important;
+                        color: white !important;
+                        cursor: pointer !important;
+                        font-weight: 500 !important;
+                        transition: all 0.15s ease !important;
+                        white-space: nowrap !important;
+                        margin: 0 !important;
+                        box-sizing: border-box !important;
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+                        text-decoration: none !important;
+                        text-transform: none !important;
+                        letter-spacing: normal !important;
+                        display: inline-block !important;
+                        line-height: 1 !important;
+                        text-align: center !important;
+                      ">Copy</button>
+                    </div>
+                    <div style="
+                      all: initial;
+                      display: flex !important;
+                      flex-direction: column !important;
+                      gap: 6px !important;
+                      font-size: 13px !important;
+                      margin: 0 !important;
+                      padding: 0 !important;
+                      box-sizing: border-box !important;
+                      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+                    ">
+                      <div style="all: initial; display: flex !important; gap: 12px !important; margin: 0 !important; padding: 0 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important; align-items: baseline !important;">
+                        <span style="all: initial; color: ${colors.textSecondary} !important; font-weight: 500 !important; min-width: 50px !important; font-size: 13px !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important; line-height: 1.4 !important; display: inline !important;">SKU:</span>
+                        <span style="
+                          all: initial;
+                          color: ${colors.textPrimary} !important;
+                          font-family: 'SF Mono', Monaco, 'Courier New', monospace !important;
+                          word-break: break-all !important;
+                          font-size: 13px !important;
+                          line-height: 1.4 !important;
+                          display: inline !important;
+                          ${!variant.sku ? `font-style: italic !important; color: ${colors.textMuted} !important;` : ''}
+                        ">${variant.sku || '(none)'}</span>
+                      </div>
+                      <div style="all: initial; display: flex !important; gap: 12px !important; margin: 0 !important; padding: 0 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important; align-items: baseline !important;">
+                        <span style="all: initial; color: ${colors.textSecondary} !important; font-weight: 500 !important; min-width: 50px !important; font-size: 13px !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important; line-height: 1.4 !important; display: inline !important;">Price:</span>
+                        <span style="all: initial; color: ${colors.textPrimary} !important; font-family: 'SF Mono', Monaco, 'Courier New', monospace !important; font-size: 13px !important; line-height: 1.4 !important; display: inline !important;">$${variant.price ? (variant.price / 100).toFixed(2) : '0.00'}</span>
+                      </div>
+                    </div>
+                  </div>
+                `).join('')
+                : `<div style="all: initial; text-align: center !important; color: ${colors.textMuted} !important; padding: 48px 16px !important; font-size: 14px !important; margin: 0 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important; display: block !important;">No variants found for this product.</div>`
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Inject modal into page
+    const modalDiv = document.createElement('div');
+    modalDiv.innerHTML = modalHTML;
+    document.body.appendChild(modalDiv.firstElementChild);
+
+    const modal = document.getElementById('shopify-cart-tools-sku-modal');
+
+    // Add hover effects via event listeners
+    const closeBtn = modal.querySelector('.modal-close-btn');
+    closeBtn.addEventListener('mouseenter', () => {
+      closeBtn.style.background = colors.bgTertiary;
+      closeBtn.style.borderColor = colors.borderHover;
+    });
+    closeBtn.addEventListener('mouseleave', () => {
+      closeBtn.style.background = colors.bgPrimary;
+      closeBtn.style.borderColor = colors.border;
+    });
+
+    // Add hover effects for copy buttons
+    const copyButtons = modal.querySelectorAll('.copy-sku-btn');
+    copyButtons.forEach(btn => {
+      btn.addEventListener('mouseenter', () => {
+        btn.style.background = colors.accentHover;
+        btn.style.transform = 'translateY(-1px)';
+      });
+      btn.addEventListener('mouseleave', () => {
+        btn.style.background = colors.accent;
+        btn.style.transform = 'translateY(0)';
+      });
+    });
+
+    // Handle copy button clicks
+    copyButtons.forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const button = e.currentTarget;
+        const sku = button.dataset.sku;
+
+        if (!sku) {
+          return;
+        }
+
+        const originalText = button.textContent;
+
+        try {
+          await navigator.clipboard.writeText(sku);
+          button.textContent = '✓';
+          button.style.background = colors.success;
+
+          setTimeout(() => {
+            button.textContent = originalText;
+            button.style.background = colors.accent;
+          }, 2000);
+        } catch (err) {
+          button.textContent = '✗';
+          button.style.background = colors.error;
+          setTimeout(() => {
+            button.textContent = originalText;
+            button.style.background = colors.accent;
+          }, 2000);
+        }
+      });
+    });
+
+    // Handle close button click
+    closeBtn.addEventListener('click', () => {
+      modal.remove();
+    });
+
+    // Handle backdrop click
+    modal.querySelector('.modal-backdrop').addEventListener('click', () => {
+      modal.remove();
+    });
+
+    // Handle ESC key
+    const escHandler = (e) => {
+      if (e.key === 'Escape') {
+        modal.remove();
+        document.removeEventListener('keydown', escHandler);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+
+    return `Showing ${product.variants?.length || 0} variant(s)`;
+  })();
+}
+
+/**
+ * Shows feedback modal in the page context
+ * Injected into page context
+ * @returns {Promise<string>} Success message
+ */
+function _showFeedbackModalInPage() {
+  return (async () => {
+    // Check if modal already exists and remove it
+    const existingModal = document.getElementById('shopify-cart-tools-feedback-modal');
+    if (existingModal) {
+      existingModal.remove();
+    }
+
+    // Detect dark mode preference
+    const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    // Color scheme variables
+    const colors = isDarkMode ? {
+      bgPrimary: '#1e1e1e',
+      bgSecondary: '#2a2a2a',
+      bgTertiary: '#333333',
+      textPrimary: '#e8eaed',
+      textSecondary: '#bdc1c6',
+      textMuted: '#9aa0a6',
+      border: '#3c4043',
+      borderHover: '#5f6368',
+      accent: '#8ab4f8',
+      accentHover: '#aecbfa',
+      success: '#81c995',
+      error: '#f28b82',
+      shadow: 'rgba(0, 0, 0, 0.5)',
+      inputBg: '#2a2a2a'
+    } : {
+      bgPrimary: '#ffffff',
+      bgSecondary: '#f8f9fa',
+      bgTertiary: '#e8ecf1',
+      textPrimary: '#1a1d23',
+      textSecondary: '#5f6368',
+      textMuted: '#9aa0a6',
+      border: '#dadce0',
+      borderHover: '#5f6368',
+      accent: '#5C6AC4',
+      accentHover: '#4c5ab8',
+      success: '#0f9d58',
+      error: '#d93025',
+      shadow: 'rgba(0, 0, 0, 0.3)',
+      inputBg: '#ffffff'
+    };
+
+    // n8n webhook endpoint for feedback
+    const API_ENDPOINT = 'https://n8n.lyonempire.co.uk/webhook/60d8c67b-aa73-4a1c-9e63-9987fdcb5ea7';
+
+    // Extension metadata for webhook differentiation
+    // NOTE: Update version when manifest.json version changes
+    const EXTENSION_NAME = 'Cart Tools for Shopify';
+    const EXTENSION_VERSION = '1.3.1';
+
+    // Create modal HTML with form
+    const modalHTML = `
+      <div id="shopify-cart-tools-feedback-modal" style="
+        all: initial;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        z-index: 999999 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+      ">
+        <div class="modal-backdrop" style="
+          all: initial;
+          position: absolute !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: 100% !important;
+          height: 100% !important;
+          background: rgba(0, 0, 0, 0.6) !important;
+          backdrop-filter: blur(3px) !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        "></div>
+        <div class="modal-container" style="
+          all: initial;
+          position: relative !important;
+          background: ${colors.bgPrimary} !important;
+          border-radius: 16px !important;
+          box-shadow: 0 20px 60px ${colors.shadow} !important;
+          width: 90% !important;
+          max-width: 500px !important;
+          max-height: 80vh !important;
+          display: flex !important;
+          flex-direction: column !important;
+          border: 1px solid ${colors.border} !important;
+          z-index: 1000000 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          box-sizing: border-box !important;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+        ">
+          <div class="modal-header" style="
+            all: initial;
+            padding: 20px 24px !important;
+            border-bottom: 1px solid ${colors.border} !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            background: ${colors.bgSecondary} !important;
+            border-radius: 16px 16px 0 0 !important;
+            margin: 0 !important;
+            box-sizing: border-box !important;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+          ">
+            <h3 style="
+              all: initial;
+              margin: 0 !important;
+              padding: 0 !important;
+              font-size: 18px !important;
+              font-weight: 600 !important;
+              color: ${colors.textPrimary} !important;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+              line-height: 1.2 !important;
+              text-align: left !important;
+              text-transform: none !important;
+              letter-spacing: normal !important;
+              display: block !important;
+            ">Send Feedback</h3>
+            <button class="modal-close-btn" style="
+              all: initial;
+              width: 32px !important;
+              height: 32px !important;
+              padding: 0 !important;
+              border-radius: 50% !important;
+              border: 1px solid ${colors.border} !important;
+              background: ${colors.bgPrimary} !important;
+              color: ${colors.textSecondary} !important;
+              font-size: 24px !important;
+              line-height: 1 !important;
+              cursor: pointer !important;
+              display: flex !important;
+              align-items: center !important;
+              justify-content: center !important;
+              transition: all 0.15s ease !important;
+              margin: 0 !important;
+              box-sizing: border-box !important;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+              text-decoration: none !important;
+              text-transform: none !important;
+              letter-spacing: normal !important;
+            ">×</button>
+          </div>
+          <form id="feedback-form" style="
+            all: initial;
+            padding: 20px 24px !important;
+            overflow-y: auto !important;
+            flex: 1 !important;
+            min-height: 0 !important;
+            margin: 0 !important;
+            box-sizing: border-box !important;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 16px !important;
+          ">
+            <div class="form-group" style="all: initial; display: flex !important; flex-direction: column !important; gap: 6px !important; margin: 0 !important; padding: 0 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;">
+              <label style="all: initial; font-size: 13px !important; font-weight: 500 !important; color: ${colors.textSecondary} !important; display: block !important; margin: 0 !important; padding: 0 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;">Name (optional)</label>
+              <input type="text" id="feedback-name" style="all: initial; width: 100% !important; padding: 10px 12px !important; border: 1px solid ${colors.border} !important; border-radius: 6px !important; background: ${colors.inputBg} !important; color: ${colors.textPrimary} !important; font-size: 14px !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important; box-sizing: border-box !important; display: block !important; margin: 0 !important;" />
+            </div>
+            <div class="form-group" style="all: initial; display: flex !important; flex-direction: column !important; gap: 6px !important; margin: 0 !important; padding: 0 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;">
+              <label style="all: initial; font-size: 13px !important; font-weight: 500 !important; color: ${colors.textSecondary} !important; display: block !important; margin: 0 !important; padding: 0 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;">Email (optional)</label>
+              <input type="email" id="feedback-email" style="all: initial; width: 100% !important; padding: 10px 12px !important; border: 1px solid ${colors.border} !important; border-radius: 6px !important; background: ${colors.inputBg} !important; color: ${colors.textPrimary} !important; font-size: 14px !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important; box-sizing: border-box !important; display: block !important; margin: 0 !important;" />
+            </div>
+            <div class="form-group" style="all: initial; display: flex !important; flex-direction: column !important; gap: 6px !important; margin: 0 !important; padding: 0 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;">
+              <label style="all: initial; font-size: 13px !important; font-weight: 500 !important; color: ${colors.textSecondary} !important; display: block !important; margin: 0 !important; padding: 0 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;">Feedback Type</label>
+              <select id="feedback-type" style="all: initial; width: 100% !important; padding: 10px 12px !important; border: 1px solid ${colors.border} !important; border-radius: 6px !important; background: ${colors.inputBg} !important; color: ${colors.textPrimary} !important; font-size: 14px !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important; box-sizing: border-box !important; display: block !important; margin: 0 !important; cursor: pointer !important;">
+                <option value="bug">Bug Report</option>
+                <option value="feature">Feature Request</option>
+                <option value="general">General Feedback</option>
+              </select>
+            </div>
+            <div class="form-group" style="all: initial; display: flex !important; flex-direction: column !important; gap: 6px !important; margin: 0 !important; padding: 0 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;">
+              <label style="all: initial; font-size: 13px !important; font-weight: 500 !important; color: ${colors.textSecondary} !important; display: block !important; margin: 0 !important; padding: 0 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;">Message <span style="all: initial; color: ${colors.error} !important; display: inline !important;">*</span></label>
+              <textarea id="feedback-message" rows="5" required style="all: initial; width: 100% !important; padding: 10px 12px !important; border: 1px solid ${colors.border} !important; border-radius: 6px !important; background: ${colors.inputBg} !important; color: ${colors.textPrimary} !important; font-size: 14px !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important; box-sizing: border-box !important; display: block !important; margin: 0 !important; resize: vertical !important; min-height: 100px !important;"></textarea>
+            </div>
+            <div class="form-status" id="form-status" style="all: initial; font-size: 13px !important; padding: 8px 12px !important; border-radius: 6px !important; display: none !important; margin: 0 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important; text-align: center !important;"></div>
+            <div style="all: initial; display: flex !important; gap: 8px !important; margin: 0 !important; padding: 0 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;">
+              <button type="button" class="cancel-btn" style="
+                all: initial;
+                flex: 1 !important;
+                padding: 10px 16px !important;
+                border-radius: 6px !important;
+                border: 1px solid ${colors.border} !important;
+                background: ${colors.bgPrimary} !important;
+                color: ${colors.textSecondary} !important;
+                cursor: pointer !important;
+                font-size: 14px !important;
+                font-weight: 500 !important;
+                transition: all 0.15s ease !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                margin: 0 !important;
+                box-sizing: border-box !important;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+                text-decoration: none !important;
+                text-transform: none !important;
+                letter-spacing: normal !important;
+              ">Cancel</button>
+              <button type="submit" class="submit-btn" style="
+                all: initial;
+                flex: 1 !important;
+                padding: 10px 16px !important;
+                border-radius: 6px !important;
+                border: 1px solid ${colors.accent} !important;
+                background: ${colors.accent} !important;
+                color: white !important;
+                cursor: pointer !important;
+                font-size: 14px !important;
+                font-weight: 500 !important;
+                transition: all 0.15s ease !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                margin: 0 !important;
+                box-sizing: border-box !important;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+                text-decoration: none !important;
+                text-transform: none !important;
+                letter-spacing: normal !important;
+              ">Send Feedback</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+
+    // Inject modal into page
+    const modalDiv = document.createElement('div');
+    modalDiv.innerHTML = modalHTML;
+    document.body.appendChild(modalDiv.firstElementChild);
+
+    const modal = document.getElementById('shopify-cart-tools-feedback-modal');
+    const form = document.getElementById('feedback-form');
+    const formStatus = document.getElementById('form-status');
+
+    // Add hover effects
+    const closeBtn = modal.querySelector('.modal-close-btn');
+    const cancelBtn = modal.querySelector('.cancel-btn');
+    const submitBtn = modal.querySelector('.submit-btn');
+
+    closeBtn.addEventListener('mouseenter', () => {
+      closeBtn.style.background = colors.bgTertiary;
+      closeBtn.style.borderColor = colors.borderHover;
+    });
+    closeBtn.addEventListener('mouseleave', () => {
+      closeBtn.style.background = colors.bgPrimary;
+      closeBtn.style.borderColor = colors.border;
+    });
+
+    cancelBtn.addEventListener('mouseenter', () => {
+      cancelBtn.style.background = colors.bgSecondary;
+      cancelBtn.style.borderColor = colors.borderHover;
+    });
+    cancelBtn.addEventListener('mouseleave', () => {
+      cancelBtn.style.background = colors.bgPrimary;
+      cancelBtn.style.borderColor = colors.border;
+    });
+
+    submitBtn.addEventListener('mouseenter', () => {
+      submitBtn.style.background = colors.accentHover;
+      submitBtn.style.borderColor = colors.accentHover;
+    });
+    submitBtn.addEventListener('mouseleave', () => {
+      submitBtn.style.background = colors.accent;
+      submitBtn.style.borderColor = colors.accent;
+    });
+
+    // Handle form submission
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const name = document.getElementById('feedback-name').value.trim();
+      const email = document.getElementById('feedback-email').value.trim();
+      const type = document.getElementById('feedback-type').value;
+      const message = document.getElementById('feedback-message').value.trim();
+
+      if (!message) {
+        formStatus.textContent = 'Please enter a message';
+        formStatus.style.display = 'block';
+        formStatus.style.background = colors.error + '20';
+        formStatus.style.color = colors.error;
+        return;
+      }
+
+      // Disable submit button
+      submitBtn.disabled = true;
+      submitBtn.style.opacity = '0.5';
+      submitBtn.style.cursor = 'not-allowed';
+      submitBtn.textContent = 'Sending...';
+
+      try {
+        const response = await fetch(API_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            // Extension identification
+            extension_name: EXTENSION_NAME,
+            extension_version: EXTENSION_VERSION,
+            // User feedback
+            name: name || 'Anonymous',
+            email: email || 'Not provided',
+            type,
+            message,
+            // Context metadata
+            timestamp: new Date().toISOString(),
+            userAgent: navigator.userAgent,
+            url: window.location.href
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        // Success
+        formStatus.textContent = 'Thank you! Your feedback has been sent.';
+        formStatus.style.display = 'block';
+        formStatus.style.background = colors.success + '20';
+        formStatus.style.color = colors.success;
+
+        // Clear form
+        form.reset();
+
+        // Close modal after 2 seconds
+        setTimeout(() => {
+          modal.remove();
+        }, 2000);
+      } catch (error) {
+        formStatus.textContent = 'Failed to send feedback. Please try again.';
+        formStatus.style.display = 'block';
+        formStatus.style.background = colors.error + '20';
+        formStatus.style.color = colors.error;
+
+        // Re-enable submit button
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = '1';
+        submitBtn.style.cursor = 'pointer';
+        submitBtn.textContent = 'Send Feedback';
+      }
+    });
+
+    // Handle close button click
+    closeBtn.addEventListener('click', () => {
+      modal.remove();
+    });
+
+    // Handle cancel button click
+    cancelBtn.addEventListener('click', () => {
+      modal.remove();
+    });
+
+    // Handle backdrop click
+    modal.querySelector('.modal-backdrop').addEventListener('click', () => {
+      modal.remove();
+    });
+
+    // Handle ESC key
+    const escHandler = (e) => {
+      if (e.key === 'Escape') {
+        modal.remove();
+        document.removeEventListener('keydown', escHandler);
+      }
+    };
+    document.addEventListener('keydown', escHandler);
+
+    return 'Feedback modal opened';
+  })();
 }
 
 /**
@@ -491,6 +1275,7 @@ function disableButtons() {
   removeAttrsBtn.disabled = true;
   logProductBtn.disabled = true;
   copyProductBtn.disabled = true;
+  viewSkusBtn.disabled = true;
 }
 
 /**
@@ -503,6 +1288,7 @@ function enableButtons() {
   removeAttrsBtn.disabled = false;
   logProductBtn.disabled = false;
   copyProductBtn.disabled = false;
+  viewSkusBtn.disabled = false;
 }
 
 /**
@@ -749,5 +1535,36 @@ removeAttrsBtn.addEventListener('click', async () => {
     setStatus(`Error: ${err.message || err}`, 'error');
     removeAttrsBtn.innerHTML = originalText;
     enableButtons();
+  }
+});
+
+// View product SKUs in modal
+viewSkusBtn.addEventListener('click', async () => {
+  setStatus('Loading variants…');
+  const originalText = viewSkusBtn.innerHTML;
+  viewSkusBtn.innerHTML = '<span class="icon">⏳</span><span>Loading…</span>';
+  disableButtons();
+
+  try {
+    const message = await withTimeout(runInPage(_showSkuModalInPage), API_TIMEOUT, 'Loading SKU modal');
+    setStatus(message, 'success');
+
+    // Close the popup so user can interact with modal immediately
+    setTimeout(() => window.close(), 100);
+  } catch (err) {
+    setStatus(`Error: ${err.message || err}`, 'error');
+    viewSkusBtn.innerHTML = originalText;
+    enableButtons();
+  }
+});
+
+// Open feedback modal
+feedbackBtn.addEventListener('click', async () => {
+  try {
+    await runInPage(_showFeedbackModalInPage);
+    // Close the popup so user can interact with modal immediately
+    setTimeout(() => window.close(), 100);
+  } catch (err) {
+    setStatus(`Error: ${err.message || err}`, 'error');
   }
 });

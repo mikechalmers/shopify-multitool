@@ -2,6 +2,55 @@
 
 All notable changes to Cart Tools for Shopify will be documented in this file.
 
+## [1.3.0] - 2025-11-12
+
+### Added
+- **Get SKUs modal** - New button in Product Tools that opens a page-injected modal displaying all product variants
+  - Shows variant title, SKU, and price for each variant
+  - Individual "Copy" button per variant for quick SKU copying
+  - Modal injected into page DOM (not popup) for larger size (600px max-width, 80vh max-height)
+  - Scrollable content supports products with many variants
+  - Multiple close options: close button (×), backdrop click, or ESC key
+  - Visual feedback: green checkmark on successful copy, red X on failure
+  - **CSS isolation** - Uses `all: initial` with `!important` flags to prevent page CSS inheritance
+  - Inline styles with defensive styling to avoid conflicts with page CSS
+  - High z-index (999999) to appear above page content
+  - **Dark/light mode support** - Automatically detects and matches system color scheme preference
+  - **Auto-close popup** - Extension popup closes automatically after launching modal for immediate interaction
+
+- **Feedback system** - New feedback button in footer for submitting bug reports, feature requests, and general feedback
+  - Page-injected modal form with same architecture as SKU modal
+  - Form fields: Name (optional), Email (optional), Feedback Type (dropdown), Message (required)
+  - Submits to configurable API endpoint via POST request
+  - Includes metadata: timestamp, user agent, and current page URL
+  - Success/error handling with inline status messages
+  - Auto-closes modal after successful submission
+  - Full CSS isolation and dark/light mode support
+  - Dashed border styling for subtle footer placement
+
+### Changed
+- **Button labels improved** - All buttons now explicitly state what they operate on:
+  - "Log to console" → "Log cart" / "Log product"
+  - "Copy" → "Copy cart" / "Copy product"
+  - Makes it immediately clear which data each button affects
+
+- **Section headers enhanced** - Cart Tools and Product Tools headers now more prominent:
+  - Increased font size (11px → 13px)
+  - Increased font weight (600 → 700)
+  - Changed from muted gray to primary text color with 90% opacity
+  - Better letter spacing (0.5px → 0.8px) for improved readability
+  - Creates clearer visual hierarchy and separation between sections
+
+- **Button layout optimized** - Paired buttons (Log/Copy) now have equal width split (50/50) for balanced appearance and professional look
+
+### Technical Improvements
+- All modals use comprehensive CSS isolation to prevent Shopify theme conflicts
+- Modal dark mode detection via `prefers-color-scheme` media query
+- Auto-closing popup behavior for better modal interaction UX
+- Defensive inline styling with `!important` flags throughout modal components
+- Form validation for feedback modal (message required)
+- Configurable API endpoint for feedback submissions (popup.js line 493)
+
 ## [1.2.0] - 2025-11-03
 
 ### Added

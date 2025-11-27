@@ -11,6 +11,7 @@
 # Chrome Extension
 *.pem
 *.crx
+*.zip
 web-ext-artifacts/
 
 # Node (if build tools are added later)
